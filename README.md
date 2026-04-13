@@ -1,5 +1,5 @@
 # PlantAI
-# Plant Disease Detector: Full Stack Architecture & Project Documentation
+# A Plant Disease Detector: Full Stack Architecture & Project Documentation
 
 ## 1. Project Overview
 The **Plant Disease Detector** is a full-stack, AI-powered agricultural web application designed to help farmers, gardeners, and botanists identify plant diseases accurately. By uploading a photo of a plant, the application instantly provides a diagnosis, severity classification, and specific care instructions (including both chemical treatments and organic home remedies). 
