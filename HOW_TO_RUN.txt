@@ -28,7 +28,7 @@ STEP 2: VERIFY ENVIRONMENT VARIABLES
 -------------------------------------
 Check the .env file in the root directory:
 
-    VITE_GEMINI_API_KEY=AIzaSyDAWzX2ypGSSp7bnCBSlVPqttJn1YYGXhs
+    VITE_GEMINI_API_KEY=your_api_key_here
 
 If you need a new API key:
 1. Go to: https://aistudio.google.com/app/apikey
