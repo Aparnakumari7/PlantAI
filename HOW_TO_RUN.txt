@@ -1,0 +1,382 @@
+================================================================================
+                    PLANT DISEASE DETECTOR - SETUP GUIDE
+================================================================================
+
+PROJECT OVERVIEW:
+-----------------
+A full-stack AI-powered plant disease detection application using:
+- Frontend: React 19 + Vite
+- Backend: Node.js + Express
+- Database: SQLite3
+- AI: Google Gemini API (gemini-2.5-flash-lite)
+- Voice: Web Speech API (English Language)
+
+================================================================================
+                          INSTALLATION & SETUP
+================================================================================
+
+STEP 1: INSTALL DEPENDENCIES
+-----------------------------
+Open terminal in the project folder and run:
+
+    npm install
+
+This will install all required packages from package.json.
+
+
+STEP 2: VERIFY ENVIRONMENT VARIABLES
+-------------------------------------
+Check the .env file in the root directory:
+
+    VITE_GEMINI_API_KEY=AIzaSyDAWzX2ypGSSp7bnCBSlVPqttJn1YYGXhs
+
+If you need a new API key:
+1. Go to: https://aistudio.google.com/app/apikey
+2. Create a new API key
+3. Replace the value in .env file
+
+
+STEP 3: RUN THE PROJECT
+------------------------
+There are two ways to run the project:
+
+METHOD 1 - Run Both Servers Together (RECOMMENDED):
+    npm run dev:full
+
+This starts:
+- Frontend (Vite) on: http://localhost:5173/
+- Backend (Express) on: http://localhost:5000/
+
+
+METHOD 2 - Run Servers Separately:
+Open TWO terminal windows:
+
+Terminal 1 (Backend):
+    node backend/server.js
+
+Terminal 2 (Frontend):
+    npm run dev
+
+
+STEP 4: ACCESS THE APPLICATION
+-------------------------------
+Open your browser and go to:
+    http://localhost:5173/
+
+
+STEP 5: BROWSER COMPATIBILITY (IMPORTANT)
+-----------------------------------------
+For the Voice-to-Voice features (STT/TTS) to work optimally:
+- USE: Google Chrome or Microsoft Edge (Latest versions)
+- Safari/Firefox have limited support for SpeechRecognition.
+- Ensure your microphone is enabled in browser settings.
+
+
+================================================================================
+                          APPLICATION FEATURES
+================================================================================
+
+1. GUEST MODE (No Login Required):
+   - Click "Try It Now" on home page
+   - Upload plant images or use camera
+   - Get instant AI diagnosis
+   - Data is NOT saved
+
+2. REGISTERED USER MODE:
+   - Register/Login to save scan history
+   - View all past diagnoses at /history
+   - Delete your own scans
+   - Download PDF reports
+   - Access profile statistics
+
+3. ADMIN MODE:
+   - Register with username: "admin"
+   - Access admin dashboard at /admin
+   - View all platform statistics
+   - See global scan activity
+   - Delete any user's scans
+
+4. SMART DIAGNOSIS & VOICE:
+   - Toggle "Smart Context" for accurate environmental analysis
+   - Use the Microphone button in chat for voice input
+   - Enable "Voice Mode" to have AI responses read aloud
+   - Listen to expert audio summaries on the results page
+   - Application operates in English language only
+
+
+================================================================================
+                          SQLITE DATABASE COMMANDS
+================================================================================
+
+DATABASE LOCATION:
+------------------
+    backend/database.sqlite
+
+
+HOW TO ACCESS SQLITE DATABASE:
+-------------------------------
+
+Option 1 - Using SQLite Command Line:
+1. Install SQLite: https://www.sqlite.org/download.html
+2. Open terminal in project folder
+3. Run: sqlite3 backend/database.sqlite
+
+
+Option 2 - Using DB Browser for SQLite (GUI):
+1. Download from: https://sqlitebrowser.org/
+2. Open the file: backend/database.sqlite
+
+
+USEFUL SQL COMMANDS:
+--------------------
+
+1. VIEW ALL TABLES:
+   .tables
+
+2. VIEW TABLE STRUCTURE:
+   .schema users
+   .schema predictions
+
+3. VIEW ALL USERS:
+   SELECT * FROM users;
+
+4. VIEW ALL PREDICTIONS/SCANS:
+   SELECT * FROM predictions;
+
+5. COUNT TOTAL USERS:
+   SELECT COUNT(*) as total_users FROM users;
+
+6. COUNT TOTAL SCANS:
+   SELECT COUNT(*) as total_scans FROM predictions;
+
+7. COUNT HEALTHY VS DISEASED PLANTS:
+   SELECT 
+     SUM(CASE WHEN is_healthy = 1 THEN 1 ELSE 0 END) as healthy,
+     SUM(CASE WHEN is_healthy = 0 THEN 1 ELSE 0 END) as diseased
+   FROM predictions;
+
+8. VIEW USER'S SCAN HISTORY:
+   SELECT * FROM predictions WHERE user_id = 1;
+
+9. VIEW RECENT SCANS (Last 10):
+   SELECT p.*, u.username, u.email 
+   FROM predictions p 
+   JOIN users u ON p.user_id = u.id 
+   ORDER BY p.timestamp DESC 
+   LIMIT 10;
+
+10. FIND SPECIFIC DISEASE:
+    SELECT * FROM predictions 
+    WHERE disease_name LIKE '%blight%';
+
+11. DELETE A SPECIFIC SCAN:
+    DELETE FROM predictions WHERE id = 1;
+
+12. DELETE ALL SCANS FOR A USER:
+    DELETE FROM predictions WHERE user_id = 1;
+
+13. DELETE A USER (and their scans):
+    DELETE FROM predictions WHERE user_id = 1;
+    DELETE FROM users WHERE id = 1;
+
+14. MAKE A USER ADMIN:
+    UPDATE users SET is_admin = 1 WHERE username = 'admin';
+
+15. VIEW ADMIN USERS ONLY:
+    SELECT * FROM users WHERE is_admin = 1;
+
+16. COUNT SCANS PER USER:
+    SELECT u.username, COUNT(p.id) as scan_count
+    FROM users u
+    LEFT JOIN predictions p ON u.id = p.user_id
+    GROUP BY u.id
+    ORDER BY scan_count DESC;
+
+17. MOST COMMON DISEASES:
+    SELECT disease_name, COUNT(*) as count
+    FROM predictions
+    WHERE is_healthy = 0
+    GROUP BY disease_name
+    ORDER BY count DESC
+    LIMIT 10;
+
+18. CLEAR ALL DATA (RESET DATABASE):
+    DELETE FROM predictions;
+    DELETE FROM users;
+
+19. BACKUP DATABASE:
+    .backup 'backup_database.sqlite'
+
+20. RESTORE DATABASE:
+    .restore 'backup_database.sqlite'
+
+
+DATABASE SCHEMA:
+----------------
+
+USERS TABLE:
+------------
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  is_admin BOOLEAN DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+PREDICTIONS TABLE:
+------------------
+CREATE TABLE predictions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  plant_name TEXT,
+  is_healthy BOOLEAN,
+  plant_confidence REAL,
+  disease_name TEXT,
+  treatment TEXT,
+  image_path TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+
+================================================================================
+                          TROUBLESHOOTING
+================================================================================
+
+PROBLEM: "Port 5000 already in use"
+SOLUTION: 
+    - Kill the process using port 5000
+    - Windows: netstat -ano | findstr :5000
+              taskkill /PID <PID> /F
+    - Or change port in backend/server.js
+
+PROBLEM: "API key not working"
+SOLUTION:
+    - Get new key from: https://aistudio.google.com/app/apikey
+    - Update .env file
+    - Restart the servers
+
+PROBLEM: "Database locked"
+SOLUTION:
+    - Close all SQLite connections
+    - Restart the backend server
+
+PROBLEM: "Module not found"
+SOLUTION:
+    - Delete node_modules folder
+    - Delete package-lock.json
+    - Run: npm install
+
+PROBLEM: "AI service overloaded"
+SOLUTION:
+    - Wait 10 seconds and try again
+    - The app has automatic retry logic with 5 attempts
+    - Using stable gemini-2.5-flash-lite model for reliability
+
+PROBLEM: "Voice/Mic not working"
+SOLUTION:
+    - Check if you are using Google Chrome or Edge.
+    - Click the 'Lock' icon in the URL bar and ensure Microphone access is "Allow".
+    - Check if the page is served over HTTPS (or localhost).
+
+
+================================================================================
+                          PROJECT STRUCTURE
+================================================================================
+
+projectplant/
+├── backend/
+│   ├── database.js          # SQLite database initialization
+│   ├── database.sqlite      # SQLite database file
+│   └── server.js            # Express API server
+├── src/
+│   ├── components/          # React components
+│   ├── hooks/
+│   │   └── useVoice.js      # Speech STT/TTS logic
+│   ├── pages/               # Page components
+│   ├── services/
+│   │   ├── aiService.js     # Gemini AI integration
+│   │   ├── apiService.js    # Backend API calls
+│   │   └── pdfService.js    # PDF report generation
+│   ├── styles/              # CSS files
+│   ├── App.jsx              # Main app component
+│   └── main.jsx             # Entry point
+├── public/                  # Static assets
+├── .env                     # Environment variables
+├── package.json             # Dependencies
+├── vite.config.js           # Vite configuration
+└── HOW_TO_RUN.txt          # This file
+
+
+================================================================================
+                          USEFUL NPM COMMANDS
+================================================================================
+
+npm run dev              # Start frontend only
+npm run dev:full         # Start both frontend and backend
+npm run build            # Build for production
+npm run preview          # Preview production build
+npm run lint             # Run ESLint
+npm install              # Install dependencies
+npm audit fix            # Fix security vulnerabilities
+
+
+================================================================================
+                          API ENDPOINTS
+================================================================================
+
+AUTHENTICATION:
+POST   /api/auth/register    # Register new user
+POST   /api/auth/login       # Login user
+GET    /api/auth/verify      # Verify JWT token
+
+USER:
+GET    /api/user/profile     # Get user profile & stats
+
+HISTORY:
+POST   /api/history          # Save prediction
+GET    /api/history          # Get user's history
+DELETE /api/history/:id      # Delete user's own scan
+DELETE /api/admin/predictions/:id # Delete any scan (admin only)
+
+ADMIN:
+GET    /api/admin/stats           # Get platform statistics
+GET    /api/admin/predictions     # Get all predictions
+DELETE /api/admin/predictions/:id # Delete any scan (admin only)
+
+
+================================================================================
+                          CONTACT & SUPPORT
+================================================================================
+
+For issues or questions:
+1. Check the troubleshooting section above
+2. Review the Project_Documentation.md file
+3. Check browser console for errors (F12)
+4. Check terminal logs for backend errors
+
+
+================================================================================
+                          QUICK START SUMMARY
+================================================================================
+
+1. npm install
+2. Check .env file has API key
+3. npm run dev:full
+4. Open http://localhost:5173/
+5. Register or try as guest
+6. Upload plant image
+7. Get AI diagnosis!
+
+================================================================================
+
+# 1. Install dependencies
+npm install
+
+# 2. Run the project
+npm run dev:full
+
+# 3. Open browser
+http://localhost:5173/

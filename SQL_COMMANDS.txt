@@ -1,0 +1,356 @@
+================================================================================
+                    SQLITE DATABASE - QUICK REFERENCE
+================================================================================
+
+DATABASE FILE: backend/database.sqlite
+
+HOW TO OPEN DATABASE:
+---------------------
+Method 1: sqlite3 backend/database.sqlite
+Method 2: Use DB Browser for SQLite (GUI tool)
+
+
+================================================================================
+                          BASIC QUERIES
+================================================================================
+
+-- View all tables
+.tables
+
+-- View table structure
+.schema users
+.schema predictions
+
+-- View all data
+SELECT * FROM users;
+SELECT * FROM predictions;
+
+-- Count records
+SELECT COUNT(*) FROM users;
+SELECT COUNT(*) FROM predictions;
+
+
+================================================================================
+                          USER MANAGEMENT
+================================================================================
+
+-- View all users
+SELECT id, username, email, is_admin, created_at FROM users;
+
+-- Find specific user
+SELECT * FROM users WHERE username = 'admin';
+SELECT * FROM users WHERE email = 'user@example.com';
+
+-- Make user admin
+UPDATE users SET is_admin = 1 WHERE username = 'admin';
+
+-- Remove admin privileges
+UPDATE users SET is_admin = 0 WHERE id = 2;
+
+-- Delete user
+DELETE FROM users WHERE id = 1;
+
+-- Count total users
+SELECT COUNT(*) as total_users FROM users;
+
+-- View admin users only
+SELECT * FROM users WHERE is_admin = 1;
+
+
+================================================================================
+                          PREDICTION/SCAN QUERIES
+================================================================================
+
+-- View all predictions with user info
+SELECT p.*, u.username, u.email 
+FROM predictions p 
+JOIN users u ON p.user_id = u.id 
+ORDER BY p.timestamp DESC;
+
+-- View recent 10 scans
+SELECT * FROM predictions 
+ORDER BY timestamp DESC 
+LIMIT 10;
+
+-- View specific user's scans
+SELECT * FROM predictions WHERE user_id = 1;
+
+-- Count healthy vs diseased
+SELECT 
+  SUM(CASE WHEN is_healthy = 1 THEN 1 ELSE 0 END) as healthy_count,
+  SUM(CASE WHEN is_healthy = 0 THEN 1 ELSE 0 END) as diseased_count
+FROM predictions;
+
+-- Find specific disease
+SELECT * FROM predictions 
+WHERE disease_name LIKE '%blight%';
+
+-- Most common diseases
+SELECT disease_name, COUNT(*) as count
+FROM predictions
+WHERE is_healthy = 0 AND disease_name IS NOT NULL
+GROUP BY disease_name
+ORDER BY count DESC
+LIMIT 10;
+
+-- Most scanned plants
+SELECT plant_name, COUNT(*) as count
+FROM predictions
+GROUP BY plant_name
+ORDER BY count DESC
+LIMIT 10;
+
+
+================================================================================
+                          STATISTICS QUERIES
+================================================================================
+
+-- Platform overview
+SELECT 
+  (SELECT COUNT(*) FROM users) as total_users,
+  (SELECT COUNT(*) FROM predictions) as total_scans,
+  (SELECT COUNT(*) FROM predictions WHERE is_healthy = 1) as healthy_scans,
+  (SELECT COUNT(*) FROM predictions WHERE is_healthy = 0) as diseased_scans;
+
+-- Scans per user
+SELECT 
+  u.username, 
+  u.email,
+  COUNT(p.id) as scan_count,
+  SUM(CASE WHEN p.is_healthy = 1 THEN 1 ELSE 0 END) as healthy,
+  SUM(CASE WHEN p.is_healthy = 0 THEN 1 ELSE 0 END) as diseased
+FROM users u
+LEFT JOIN predictions p ON u.id = p.user_id
+GROUP BY u.id
+ORDER BY scan_count DESC;
+
+-- Daily scan activity
+SELECT 
+  DATE(timestamp) as date,
+  COUNT(*) as scans
+FROM predictions
+GROUP BY DATE(timestamp)
+ORDER BY date DESC
+LIMIT 30;
+
+-- Average confidence score
+SELECT AVG(plant_confidence) as avg_confidence
+FROM predictions;
+
+
+================================================================================
+                          DELETE OPERATIONS
+================================================================================
+
+-- Delete specific scan
+DELETE FROM predictions WHERE id = 5;
+
+-- Delete all scans for a user
+DELETE FROM predictions WHERE user_id = 2;
+
+-- Delete old scans (older than 30 days)
+DELETE FROM predictions 
+WHERE timestamp < datetime('now', '-30 days');
+
+-- Delete all healthy scans
+DELETE FROM predictions WHERE is_healthy = 1;
+
+-- Clear all predictions (keep users)
+DELETE FROM predictions;
+
+-- Delete user and their scans
+DELETE FROM predictions WHERE user_id = 3;
+DELETE FROM users WHERE id = 3;
+
+
+================================================================================
+                          UPDATE OPERATIONS
+================================================================================
+
+-- Update user email
+UPDATE users 
+SET email = 'newemail@example.com' 
+WHERE id = 1;
+
+-- Update user password (must be hashed in real app)
+UPDATE users 
+SET password = 'new_hashed_password' 
+WHERE id = 1;
+
+-- Update prediction data
+UPDATE predictions 
+SET disease_name = 'Corrected Disease Name' 
+WHERE id = 5;
+
+
+================================================================================
+                          SEARCH QUERIES
+================================================================================
+
+-- Search users by username
+SELECT * FROM users 
+WHERE username LIKE '%john%';
+
+-- Search predictions by plant name
+SELECT * FROM predictions 
+WHERE plant_name LIKE '%tomato%';
+
+-- Search by date range
+SELECT * FROM predictions 
+WHERE timestamp BETWEEN '2026-01-01' AND '2026-12-31';
+
+-- Search by confidence level
+SELECT * FROM predictions 
+WHERE plant_confidence > 0.9;
+
+
+================================================================================
+                          BACKUP & RESTORE
+================================================================================
+
+-- Backup database (in SQLite CLI)
+.backup 'backup_2026_04_10.sqlite'
+
+-- Restore database (in SQLite CLI)
+.restore 'backup_2026_04_10.sqlite'
+
+-- Export to CSV (in SQLite CLI)
+.mode csv
+.output users_export.csv
+SELECT * FROM users;
+.output stdout
+
+-- Export predictions to CSV
+.mode csv
+.output predictions_export.csv
+SELECT * FROM predictions;
+.output stdout
+
+
+================================================================================
+                          ADVANCED QUERIES
+================================================================================
+
+-- Users with most diseased plants
+SELECT 
+  u.username,
+  COUNT(p.id) as diseased_count
+FROM users u
+JOIN predictions p ON u.id = p.user_id
+WHERE p.is_healthy = 0
+GROUP BY u.id
+ORDER BY diseased_count DESC
+LIMIT 10;
+
+-- Disease severity distribution
+SELECT 
+  severity,
+  COUNT(*) as count
+FROM predictions
+WHERE is_healthy = 0
+GROUP BY severity;
+
+-- Monthly scan trends
+SELECT 
+  strftime('%Y-%m', timestamp) as month,
+  COUNT(*) as scans
+FROM predictions
+GROUP BY month
+ORDER BY month DESC;
+
+-- User registration trends
+SELECT 
+  DATE(created_at) as date,
+  COUNT(*) as new_users
+FROM users
+GROUP BY DATE(created_at)
+ORDER BY date DESC;
+
+
+================================================================================
+                          DATABASE MAINTENANCE
+================================================================================
+
+-- Check database integrity
+PRAGMA integrity_check;
+
+-- Optimize database
+VACUUM;
+
+-- View database size
+.dbinfo
+
+-- Analyze query performance
+EXPLAIN QUERY PLAN 
+SELECT * FROM predictions WHERE user_id = 1;
+
+-- Create index for faster queries
+CREATE INDEX idx_user_id ON predictions(user_id);
+CREATE INDEX idx_timestamp ON predictions(timestamp);
+CREATE INDEX idx_disease_name ON predictions(disease_name);
+
+
+================================================================================
+                          RESET DATABASE
+================================================================================
+
+-- WARNING: This will delete ALL data!
+
+-- Delete all predictions
+DELETE FROM predictions;
+
+-- Delete all users
+DELETE FROM users;
+
+-- Reset auto-increment counters
+DELETE FROM sqlite_sequence WHERE name='users';
+DELETE FROM sqlite_sequence WHERE name='predictions';
+
+
+================================================================================
+                          USEFUL SQLITE COMMANDS
+================================================================================
+
+.help                    # Show all commands
+.tables                  # List all tables
+.schema                  # Show all table schemas
+.databases               # List attached databases
+.quit                    # Exit SQLite
+.mode column             # Display in columns
+.headers on              # Show column headers
+.width 10 20 30          # Set column widths
+.output filename.txt     # Redirect output to file
+.output stdout           # Reset output to screen
+
+
+================================================================================
+                          SAMPLE DATA INSERTION
+================================================================================
+
+-- Insert test user
+INSERT INTO users (username, email, password, is_admin) 
+VALUES ('testuser', 'test@example.com', 'hashed_password', 0);
+
+-- Insert test prediction
+INSERT INTO predictions (
+  user_id, plant_name, is_healthy, plant_confidence, 
+  disease_name, treatment, image_path
+) VALUES (
+  1, 'Tomato', 0, 0.95, 
+  'Early Blight', 'Apply fungicide', 'data:image/png;base64,...'
+);
+
+
+================================================================================
+                          NOTES
+================================================================================
+
+1. Always backup database before making bulk changes
+2. Use transactions for multiple operations
+3. Be careful with DELETE operations - they cannot be undone
+4. Use WHERE clause to avoid deleting all records
+5. Test queries with SELECT before running UPDATE/DELETE
+6. Keep database file backed up regularly
+
+
+================================================================================

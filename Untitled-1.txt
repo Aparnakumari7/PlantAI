@@ -1,0 +1,38 @@
+# Plant Disease Detector - AI Diagnosis for Farmers
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plant Disease Detector - AI Diagnosis for Farmers</title>
+    <meta name="description" content="Use AI to instantly detect plant diseases from a photo or text description. Get professional diagnosis, causes, and treatment plans. Free, fast, and easy to use for farmers and gardeners." />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Plant Disease Detector - AI Diagnosis for Farmers" />
+    <meta property="og:description" content="Use AI to instantly detect plant diseases from a photo or text description. Get professional diagnosis, causes, and treatment plans." />
+    <meta property="og:image" content="/plant-detector-preview.jpg" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:title" content="Plant Disease Detector - AI Diagnosis for Farmers" />
+    <meta property="twitter:description" content="Use AI to instantly detect plant diseases from a photo or text description. Get professional diagnosis, causes, and treatment plans." />
+    <meta property="twitter:image" content="/plant-detector-preview.jpg" />
+    
+    <!-- Additional SEO -->
+    <meta name="keywords" content="plant disease detection, AI agriculture, plant diagnosis, farming technology, crop health, plant pathology" />
+    <meta name="author" content="Plant Disease Detector" />
+    <meta name="robots" content="index, follow" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-CBr93dYv.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-xsVoOa2T.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
