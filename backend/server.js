@@ -12,9 +12,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key'; // Use environm
 
 // CORS configuration for production
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com', 'https://www.your-domain.com'] // Replace with your actual domain
-    : ['http://localhost:5173', 'http://localhost:3000'],
+  origin: process.env.FRONTEND_URL 
+    ? [process.env.FRONTEND_URL] 
+    : function(origin, callback) { callback(null, true); }, // dynamically allow origin
   credentials: true,
   optionsSuccessStatus: 200
 };
