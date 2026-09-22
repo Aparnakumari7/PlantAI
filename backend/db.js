@@ -10,21 +10,46 @@ const isProduction = process.env.NODE_ENV === 'production';
 const usingSQLite = !process.env.DATABASE_URL;
 
 let db;
+let dbConnected = false;
+let lastDbError = null;
 
 if (isProduction || process.env.DATABASE_URL) {
   // Use PostgreSQL in production or if DATABASE_URL is set
+  if (!process.env.DATABASE_URL) {
+    const err = 'DATABASE_URL environment variable is not set. Check Render blueprint configuration.';
+    console.error('FATAL:', err);
+    throw new Error(err);
+  }
+
   const { Pool } = pg;
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: isProduction ? { rejectUnauthorized: false } : false,
     statement_timeout: 30000,
     connectionTimeoutMillis: 10000,
+    application_name: 'drplant-ai-backend',
   });
 
   // Handle pool errors
   pool.on('error', (err) => {
     console.error('PostgreSQL pool error:', err.message);
+    dbConnected = false;
+    lastDbError = err.message;
   });
+
+  // Test connection on startup
+  pool.query('SELECT 1')
+    .then(() => {
+      dbConnected = true;
+      lastDbError = null;
+      console.log('✓ PostgreSQL connection verified');
+    })
+    .catch((err) => {
+      dbConnected = false;
+      lastDbError = err.message;
+      console.error('⚠ PostgreSQL connection failed on startup:', err.message);
+      console.error('   This may be temporary. Server will attempt queries anyway.');
+    });
 
   db = {
     prepare: (sql) => {
@@ -32,8 +57,12 @@ if (isProduction || process.env.DATABASE_URL) {
         run: async (...params) => {
           try {
             const result = await pool.query(sql, params);
+            dbConnected = true;
+            lastDbError = null;
             return { changes: result.rowCount, lastInsertRowid: result.rows[0]?.id };
           } catch (err) {
+            dbConnected = false;
+            lastDbError = err.message;
             console.error('Query error:', err.message);
             throw err;
           }
@@ -41,8 +70,12 @@ if (isProduction || process.env.DATABASE_URL) {
         get: async (...params) => {
           try {
             const result = await pool.query(sql, params);
+            dbConnected = true;
+            lastDbError = null;
             return result.rows[0];
           } catch (err) {
+            dbConnected = false;
+            lastDbError = err.message;
             console.error('Query error:', err.message);
             throw err;
           }
@@ -50,8 +83,12 @@ if (isProduction || process.env.DATABASE_URL) {
         all: async (...params) => {
           try {
             const result = await pool.query(sql, params);
+            dbConnected = true;
+            lastDbError = null;
             return result.rows;
           } catch (err) {
+            dbConnected = false;
+            lastDbError = err.message;
             console.error('Query error:', err.message);
             throw err;
           }
@@ -61,11 +98,17 @@ if (isProduction || process.env.DATABASE_URL) {
     exec: async (sql) => {
       try {
         await pool.query(sql);
+        dbConnected = true;
+        lastDbError = null;
       } catch (err) {
+        dbConnected = false;
+        lastDbError = err.message;
         console.error('Exec error:', err.message);
         // Don't throw - allow server to continue
       }
-    }
+    },
+    isConnected: () => dbConnected,
+    getLastError: () => lastDbError,
   };
 
   console.log('Using PostgreSQL database (Render)');
@@ -76,7 +119,9 @@ if (isProduction || process.env.DATABASE_URL) {
 
   db = {
     prepare: (sql) => sqlite.prepare(sql),
-    exec: (sql) => sqlite.exec(sql)
+    exec: (sql) => sqlite.exec(sql),
+    isConnected: () => true,
+    getLastError: () => null,
   };
 
   console.log('Using SQLite database (Local development)');
@@ -116,44 +161,48 @@ async function initializeDb() {
       )`);
       console.log('✓ Database schema initialized (SQLite)');
     } else if (isProduction || process.env.DATABASE_URL) {
-      // PostgreSQL
-      try {
-        await db.exec(`
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            is_admin BOOLEAN DEFAULT false,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
+      // PostgreSQL - Don't block startup on schema initialization
+      setImmediate(async () => {
+        try {
+          await db.exec(`
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              username TEXT UNIQUE NOT NULL,
+              email TEXT UNIQUE NOT NULL,
+              password TEXT NOT NULL,
+              is_admin BOOLEAN DEFAULT false,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `);
 
-        await db.exec(`
-          CREATE TABLE IF NOT EXISTS predictions (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            plant_name TEXT,
-            is_healthy BOOLEAN,
-            plant_confidence REAL,
-            disease_name TEXT,
-            treatment TEXT,
-            image_path TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-          )
-        `);
-        console.log('✓ Database schema initialized (PostgreSQL)');
-      } catch (err) {
-        console.warn('Could not create tables:', err.message);
-        console.warn('Tables may already exist or DB connection needs time to stabilize');
-      }
+          await db.exec(`
+            CREATE TABLE IF NOT EXISTS predictions (
+              id SERIAL PRIMARY KEY,
+              user_id INTEGER NOT NULL,
+              plant_name TEXT,
+              is_healthy BOOLEAN,
+              plant_confidence REAL,
+              disease_name TEXT,
+              treatment TEXT,
+              image_path TEXT,
+              timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+            )
+          `);
+          console.log('✓ Database schema initialized (PostgreSQL)');
+        } catch (err) {
+          console.warn('Could not create tables:', err.message);
+          console.warn('Tables may already exist or DB connection needs time to stabilize');
+        }
+      });
     }
   } catch (err) {
     console.error('Database initialization error:', err.message);
-    console.warn('Server will continue running - DB operations may fail');
+    console.warn('Server will continue running - DB operations may fail until connection is restored');
   }
 }
 
 await initializeDb();
+
 export default db;
+export { dbConnected, lastDbError };

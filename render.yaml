@@ -3,15 +3,14 @@ services:
     name: drplant-ai-backend
     env: node
     plan: free
+    region: ohio
     buildCommand: npm install
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
-        fromDatabase:
-          name: drplant-db
-          property: JWT_SECRET
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: drplant-db
@@ -25,3 +24,4 @@ databases:
     user: drplant_user
     plan: free
     region: ohio
+

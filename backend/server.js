@@ -10,6 +10,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.error('FATAL: JWT_SECRET environment variable is not set');
+  process.exit(1);
+}
+
 const corsOptions = {
   origin: process.env.FRONTEND_URL
     ? [process.env.FRONTEND_URL]
@@ -22,8 +27,24 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// Enhanced health endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString(), uptime: process.uptime(), environment: process.env.NODE_ENV || 'development' });
+  const dbStatus = db.isConnected ? (db.isConnected() ? 'connected' : 'disconnected') : 'unknown';
+  const dbError = db.getLastError ? db.getLastError() : null;
+  
+  const healthResponse = {
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    database: dbStatus,
+  };
+
+  if (dbError && dbStatus === 'disconnected') {
+    healthResponse.database_error = dbError;
+  }
+
+  res.status(dbStatus === 'connected' ? 200 : 503).json(healthResponse);
 });
 
 const authenticateToken = (req, res, next) => {
@@ -174,7 +195,32 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log('═'.repeat(60));
+  console.log('🌿 PlantAI Backend Server Started');
+  console.log('═'.repeat(60));
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📊 Database: ${process.env.DATABASE_URL ? 'PostgreSQL' : 'SQLite'}`);
+  console.log(`🔐 CORS enabled for: ${process.env.FRONTEND_URL || 'all origins'}`);
+  console.log('═'.repeat(60));
+  console.log(`✓ Health check: GET /health`);
+  console.log('═'.repeat(60));
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully...');
+  server.close(() => {
+    console.log('✓ Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully...');
+  server.close(() => {
+    console.log('✓ Server closed');
+    process.exit(0);
+  });
 });
