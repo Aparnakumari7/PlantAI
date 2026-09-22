@@ -3,6 +3,7 @@ services:
     name: drplant-ai-backend
     env: node
     plan: free
+    region: ohio
     buildCommand: npm install
     startCommand: npm run start:prod
     envVars:
