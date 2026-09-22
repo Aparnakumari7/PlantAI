@@ -28,3 +28,4 @@ dist-ssr
 # Secrets and Database
 .env
 backend/database.sqlite
+.env*.local

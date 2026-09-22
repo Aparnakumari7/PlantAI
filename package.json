@@ -15,7 +15,8 @@
     "preview": "vite preview",
     "start": "node backend/server.js",
     "start:prod": "NODE_ENV=production node backend/server.js",
-    "build:prod": "npm run build && npm run start:prod"
+    "build:prod": "npm run build && npm run start:prod",
+    "migrate": "node backend/db-migrate.js"
   },
   "dependencies": {
     "@google/genai": "^1.48.0",
@@ -28,6 +29,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^1.7.0",
+    "pg": "^8.11.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0",
