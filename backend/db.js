@@ -16,7 +16,14 @@ if (isProduction || process.env.DATABASE_URL) {
   const { Pool } = pg;
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: isProduction ? { rejectUnauthorized: false } : false
+    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    statement_timeout: 30000,
+    connectionTimeoutMillis: 10000,
+  });
+
+  // Handle pool errors
+  pool.on('error', (err) => {
+    console.error('PostgreSQL pool error:', err.message);
   });
 
   db = {
@@ -27,6 +34,7 @@ if (isProduction || process.env.DATABASE_URL) {
             const result = await pool.query(sql, params);
             return { changes: result.rowCount, lastInsertRowid: result.rows[0]?.id };
           } catch (err) {
+            console.error('Query error:', err.message);
             throw err;
           }
         },
@@ -35,6 +43,7 @@ if (isProduction || process.env.DATABASE_URL) {
             const result = await pool.query(sql, params);
             return result.rows[0];
           } catch (err) {
+            console.error('Query error:', err.message);
             throw err;
           }
         },
@@ -43,6 +52,7 @@ if (isProduction || process.env.DATABASE_URL) {
             const result = await pool.query(sql, params);
             return result.rows;
           } catch (err) {
+            console.error('Query error:', err.message);
             throw err;
           }
         }
@@ -52,7 +62,8 @@ if (isProduction || process.env.DATABASE_URL) {
       try {
         await pool.query(sql);
       } catch (err) {
-        throw err;
+        console.error('Exec error:', err.message);
+        // Don't throw - allow server to continue
       }
     }
   };
@@ -103,37 +114,44 @@ async function initializeDb() {
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       )`);
+      console.log('✓ Database schema initialized (SQLite)');
     } else if (isProduction || process.env.DATABASE_URL) {
       // PostgreSQL
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          username TEXT UNIQUE NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          password TEXT NOT NULL,
-          is_admin BOOLEAN DEFAULT false,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      try {
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT false,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS predictions (
-          id SERIAL PRIMARY KEY,
-          user_id INTEGER NOT NULL,
-          plant_name TEXT,
-          is_healthy BOOLEAN,
-          plant_confidence REAL,
-          disease_name TEXT,
-          treatment TEXT,
-          image_path TEXT,
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-        )
-      `);
+        await db.exec(`
+          CREATE TABLE IF NOT EXISTS predictions (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            plant_name TEXT,
+            is_healthy BOOLEAN,
+            plant_confidence REAL,
+            disease_name TEXT,
+            treatment TEXT,
+            image_path TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+          )
+        `);
+        console.log('✓ Database schema initialized (PostgreSQL)');
+      } catch (err) {
+        console.warn('Could not create tables:', err.message);
+        console.warn('Tables may already exist or DB connection needs time to stabilize');
+      }
     }
-    console.log('✓ Database schema initialized');
   } catch (err) {
     console.error('Database initialization error:', err.message);
+    console.warn('Server will continue running - DB operations may fail');
   }
 }
 

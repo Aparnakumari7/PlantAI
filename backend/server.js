@@ -160,8 +160,17 @@ if (process.env.NODE_ENV === 'production') {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   app.use(express.static(path.join(__dirname, '../dist')));
-  app.get('*', (req, res) => {
+  // Serve index.html for all non-API routes
+  app.get('/index.html', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+  app.use((req, res) => {
+    // Only serve index.html for non-API routes
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/health')) {
+      res.sendFile(path.join(__dirname, '../dist/index.html'));
+    } else {
+      res.status(404).json({ error: 'Not found' });
+    }
   });
 }
 
