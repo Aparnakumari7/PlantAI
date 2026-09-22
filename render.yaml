@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: drplant-ai-backend
+    name: drplant-ai-backend-ohio
     env: node
     plan: free
     region: ohio
